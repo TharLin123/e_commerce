@@ -6,12 +6,21 @@ import { BrowserRouter as Router, Switch, Route } from 'react-router-dom'
 
 function App() {            
     const [ product, setProduct ] = useState([])
+    const [mobileOpen, setMobileOpen] = React.useState(false);
     const [ cart, setCart ] = useState({})
+    const [order, setOrder] = useState({});
+    const [errorMessage, setErrorMessage] = useState('');
 
     const fetchProduct = async () => {
         const { data } = await commerce.products.list();
         setProduct(data)
     }
+
+    const refreshCart = async () => {
+        const newCart = await commerce.cart.refresh();
+    
+        setCart(newCart);
+      };
 
     const fetchCart = async () => {
         setCart(await commerce.cart.retrieve())
@@ -38,11 +47,28 @@ function App() {
         const { cart } = await commerce.cart.empty()
         setCart(cart)
     }
+    
+    const handleCaptureCheckout = async (checkoutTokenId, newOrder) => {
+        console.log(checkoutTokenId);
+        console.log(newOrder);
+        try {
+          const incomingOrder = await commerce.checkout.capture(checkoutTokenId, newOrder);
+          console.log(incomingOrder);
+          setOrder(incomingOrder);
+          refreshCart();
+        } catch (error) {
+          setErrorMessage(error.data.error.message);
+        }
+    };
+
+    console.log(order)
 
     useEffect(()=>{
         fetchProduct()
         fetchCart()
     },[])
+
+    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
     return (
         <Router>
@@ -61,7 +87,7 @@ function App() {
                     />
                     </Route>
                     <Route exact path='/checkout'>
-                        <CheckOut cart={cart}/>
+                        <CheckOut cart={cart} order={order} onCaptureCheckout={handleCaptureCheckout} error={errorMessage}/>
                     </Route>
                 </Switch>
             </div>
